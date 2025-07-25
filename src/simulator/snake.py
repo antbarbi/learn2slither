@@ -17,9 +17,11 @@ DIRECTION = {
 }
 
 class GameOver(Exception):
-    def __init__(self):
-        super().__init__("Game Over.")
-
+    def __init__(self, message):
+        if message:
+            super().__init__(f"Game Over: {message}")
+        else:
+            super().__init__("Game Over.")
 
 def _get_random_coordinates() -> tuple[int, int]:
     # Avoid walls (first and last rows/columns)
@@ -71,6 +73,7 @@ class Snake:
                 return coor
 
     def reset(self):
+        self.total_reward = 0
         # Init grid
         self.grid: list[list]                       = np.full((12, 12), '0', dtype='<U1')
 
@@ -92,35 +95,51 @@ class Snake:
             self.green_apples.append(self._random_cell())
         self.red_apple = self._random_cell()
 
+    def _update_reward(self, reward: float):
+        self.total_reward += reward
+        self.event = reward
+
     def step(self, action: Action) -> None:
         dr, dc = DIRECTION[action]
         head_row, head_col = self.snake[0]
         new_row, new_col = head_row + dr, head_col + dc
 
-        # Prevent moving into the second segment
-        if len(self.snake) > 1 and (new_row, new_col) == self.snake[1]:
-            print("Invalid move: cannot move into the second segment!")
-            return
+        self.event = 0 # Default event: regular move
+
+        # # Prevent moving into the second segment
+        # if len(self.snake) > 1 and (new_row, new_col) == self.snake[1]:
+        #     print("Invalid move: cannot move into the second segment!")
+        #     return
 
         self.last_action = action
         coor = (new_row, new_col)
         if not (1 <= new_row < self.grid.shape[0] - 1 and 1 <= new_col < self.grid.shape[1] - 1):
-            raise GameOver()
+            self._update_reward(-100)
+            raise GameOver("Hit a wall.")
         elif coor in self.snake:
-            raise GameOver()
+            self._update_reward(-100)
+            raise GameOver("Hit itself.")
         elif coor == self.red_apple:
             if len(self.snake) <= 1:
-                raise GameOver()
+                self._update_reward(-100)
+                raise GameOver("Size went to 0.")
             self.snake.insert(0, coor)
             self.snake = self.snake[:-2]
             self.red_apple = self._random_cell()
+            self._update_reward(-5)
         elif coor in self.green_apples:
             self.snake.insert(0, coor)
             self.green_apples.remove(coor)
             self.green_apples.append(self._random_cell())
+            self._update_reward(100)
         else:
             self.snake.insert(0, coor)
             self.snake.pop()
+            self._update_reward(-0.1)
+
+        obs = self.get_observation()
+        if "G" in obs["up"] or "G" in obs["down"] or "G" in obs["left"] or "G" in obs["right"]:
+            self._update_reward(1)  # Small positive reward for seeing a green apple
 
     def print(self):
         color_map = {
@@ -143,30 +162,77 @@ class Snake:
         print()
 
     def get_observation(self):
-        """Returns the visible state in the 4 directions from the snake's head."""
+        """Returns the visible state in the 4 directions from the snake's head, including snake and apples."""
         head_row, head_col = self.snake[0]
         vision = {"up": [], "down": [], "left": [], "right": []}
         # Up
         for r in range(head_row-1, -1, -1):
-            vision["up"].append(self.grid[r, head_col])
+            cell = self.grid[r, head_col]
+            pos = (r, head_col)
+            if pos in self.snake:
+                cell = "S"
+            elif pos in self.green_apples:
+                cell = "G"
+            elif pos == self.red_apple:
+                cell = "R"
+            vision["up"].append(cell)
             if self.grid[r, head_col] == "W":
                 break
         # Down
         for r in range(head_row+1, self.grid.shape[0]):
-            vision["down"].append(self.grid[r, head_col])
+            cell = self.grid[r, head_col]
+            pos = (r, head_col)
+            if pos in self.snake:
+                cell = "S"
+            elif pos in self.green_apples:
+                cell = "G"
+            elif pos == self.red_apple:
+                cell = "R"
+            vision["down"].append(cell)
             if self.grid[r, head_col] == "W":
                 break
         # Left
         for c in range(head_col-1, -1, -1):
-            vision["left"].append(self.grid[head_row, c])
+            cell = self.grid[head_row, c]
+            pos = (head_row, c)
+            if pos in self.snake:
+                cell = "S"
+            elif pos in self.green_apples:
+                cell = "G"
+            elif pos == self.red_apple:
+                cell = "R"
+            vision["left"].append(cell)
             if self.grid[head_row, c] == "W":
                 break
         # Right
         for c in range(head_col+1, self.grid.shape[1]):
-            vision["right"].append(self.grid[head_row, c])
+            cell = self.grid[head_row, c]
+            pos = (head_row, c)
+            if pos in self.snake:
+                cell = "S"
+            elif pos in self.green_apples:
+                cell = "G"
+            elif pos == self.red_apple:
+                cell = "R"
+            vision["right"].append(cell)
             if self.grid[head_row, c] == "W":
                 break
         return vision
+
+    def print_observation(self):
+        obs = self.get_observation()
+        # Print up direction (top to head)
+        for cell in reversed(obs["up"]):
+            print(" " * len(obs["left"]) + cell)
+        # Print left + head + right on one line
+        print("".join(obs["left"][::-1]) + "H" + "".join(obs["right"]))
+        # Print down direction (bottom from head)
+        for cell in obs["down"]:
+            print(" " * len(obs["left"]) + cell)
+        print()
+
+    def get_event(self) -> float:
+        return self.event
 
 
 if __name__ == "__main__":

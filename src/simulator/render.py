@@ -1,5 +1,5 @@
 import pygame
-from snake import Snake, Action
+from simulator.snake import Snake, Action
 
 CELL_SIZE = 64
 GRID_SIZE = 12
@@ -13,24 +13,24 @@ COLOR_RED_APPLE = (255, 0, 0)
 
 def load_images(cell_size):
     images = {
-        "head_up": pygame.transform.scale(pygame.image.load("./assets/head_up.png"), (cell_size, cell_size)),
-        "head_down": pygame.transform.scale(pygame.image.load("./assets/head_down.png"), (cell_size, cell_size)),
-        "head_left": pygame.transform.scale(pygame.image.load("./assets/head_left.png"), (cell_size, cell_size)),
-        "head_right": pygame.transform.scale(pygame.image.load("./assets/head_right.png"), (cell_size, cell_size)),
-        "tail_up": pygame.transform.scale(pygame.image.load("./assets/tail_up.png"), (cell_size, cell_size)),
-        "tail_down": pygame.transform.scale(pygame.image.load("./assets/tail_down.png"), (cell_size, cell_size)),
-        "tail_left": pygame.transform.scale(pygame.image.load("./assets/tail_left.png"), (cell_size, cell_size)),
-        "tail_right": pygame.transform.scale(pygame.image.load("./assets/tail_right.png"), (cell_size, cell_size)),
-        "body_horizontal": pygame.transform.scale(pygame.image.load("./assets/body_horizontal.png"), (cell_size, cell_size)),
-        "body_vertical": pygame.transform.scale(pygame.image.load("./assets/body_vertical.png"), (cell_size, cell_size)),
-        "body_topleft": pygame.transform.scale(pygame.image.load("./assets/body_topleft.png"), (cell_size, cell_size)),
-        "body_topright": pygame.transform.scale(pygame.image.load("./assets/body_topright.png"), (cell_size, cell_size)),
-        "body_bottomleft": pygame.transform.scale(pygame.image.load("./assets/body_bottomleft.png"), (cell_size, cell_size)),
-        "body_bottomright": pygame.transform.scale(pygame.image.load("./assets/body_bottomright.png"), (cell_size, cell_size)),
-        "green_apple": pygame.transform.scale(pygame.image.load("./assets/green_apple.png"), (cell_size, cell_size)),
-        "red_apple": pygame.transform.scale(pygame.image.load("./assets/red_apple.png"), (cell_size, cell_size)),
-        "wall": pygame.transform.scale(pygame.image.load("./assets/fire.jpg"), (cell_size, cell_size)),
-        "background": pygame.transform.scale(pygame.image.load("./assets/grass.png"), (cell_size, cell_size)),
+        "head_up": pygame.transform.scale(pygame.image.load("../assets/head_up.png"), (cell_size, cell_size)),
+        "head_down": pygame.transform.scale(pygame.image.load("../assets/head_down.png"), (cell_size, cell_size)),
+        "head_left": pygame.transform.scale(pygame.image.load("../assets/head_left.png"), (cell_size, cell_size)),
+        "head_right": pygame.transform.scale(pygame.image.load("../assets/head_right.png"), (cell_size, cell_size)),
+        "tail_up": pygame.transform.scale(pygame.image.load("../assets/tail_up.png"), (cell_size, cell_size)),
+        "tail_down": pygame.transform.scale(pygame.image.load("../assets/tail_down.png"), (cell_size, cell_size)),
+        "tail_left": pygame.transform.scale(pygame.image.load("../assets/tail_left.png"), (cell_size, cell_size)),
+        "tail_right": pygame.transform.scale(pygame.image.load("../assets/tail_right.png"), (cell_size, cell_size)),
+        "body_horizontal": pygame.transform.scale(pygame.image.load("../assets/body_horizontal.png"), (cell_size, cell_size)),
+        "body_vertical": pygame.transform.scale(pygame.image.load("../assets/body_vertical.png"), (cell_size, cell_size)),
+        "body_topleft": pygame.transform.scale(pygame.image.load("../assets/body_topleft.png"), (cell_size, cell_size)),
+        "body_topright": pygame.transform.scale(pygame.image.load("../assets/body_topright.png"), (cell_size, cell_size)),
+        "body_bottomleft": pygame.transform.scale(pygame.image.load("../assets/body_bottomleft.png"), (cell_size, cell_size)),
+        "body_bottomright": pygame.transform.scale(pygame.image.load("../assets/body_bottomright.png"), (cell_size, cell_size)),
+        "green_apple": pygame.transform.scale(pygame.image.load("../assets/green_apple.png"), (cell_size, cell_size)),
+        "red_apple": pygame.transform.scale(pygame.image.load("../assets/red_apple.png"), (cell_size, cell_size)),
+        "wall": pygame.transform.scale(pygame.image.load("../assets/fire.jpg"), (cell_size, cell_size)),
+        "background": pygame.transform.scale(pygame.image.load("../assets/grass.png"), (cell_size, cell_size)),
     }
     return images
 
