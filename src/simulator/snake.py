@@ -40,6 +40,7 @@ def _get_random_adjacent(snake: list[tuple[int, int]], coor: tuple[int, int], gr
 class Snake:
     def __init__(self):
         self.reset()
+        self.last_action = Action.RIGHT
 
     def _init_snake(self) -> list[tuple[int, int]]:
         coor = _get_random_coordinates()
@@ -58,8 +59,8 @@ class Snake:
     def reset(self):
         # Init grid
         self.grid: list[list]                       = np.full((12, 12), '0', dtype='<U1')
-        
-         # Fill edges with 'W'
+
+        # Fill edges with 'W'
         self.grid[0, :] = 'W'
         self.grid[-1, :] = 'W'
         self.grid[:, 0] = 'W'
@@ -87,6 +88,7 @@ class Snake:
             print("Invalid move: cannot move into the second segment!")
             return
 
+        self.last_action = action
         coor = (new_row, new_col)
         if not (1 <= new_row < self.grid.shape[0] - 1 and 1 <= new_col < self.grid.shape[1] - 1):
             raise GameOver()
@@ -126,8 +128,31 @@ class Snake:
             print(" ".join(color_map[cell] for cell in row))
         print()
 
-    def get_observation():
-        pass
+    def get_observation(self):
+        """Returns the visible state in the 4 directions from the snake's head."""
+        head_row, head_col = self.snake[0]
+        vision = {"up": [], "down": [], "left": [], "right": []}
+        # Up
+        for r in range(head_row-1, -1, -1):
+            vision["up"].append(self.grid[r, head_col])
+            if self.grid[r, head_col] == "W":
+                break
+        # Down
+        for r in range(head_row+1, self.grid.shape[0]):
+            vision["down"].append(self.grid[r, head_col])
+            if self.grid[r, head_col] == "W":
+                break
+        # Left
+        for c in range(head_col-1, -1, -1):
+            vision["left"].append(self.grid[head_row, c])
+            if self.grid[head_row, c] == "W":
+                break
+        # Right
+        for c in range(head_col+1, self.grid.shape[1]):
+            vision["right"].append(self.grid[head_row, c])
+            if self.grid[head_row, c] == "W":
+                break
+        return vision
 
 
 if __name__ == "__main__":
@@ -138,6 +163,7 @@ if __name__ == "__main__":
         "a": Action.LEFT,
         "d": Action.RIGHT
     }
+    print(snake.get_observation())
     try:
         while True:
             snake.print()
