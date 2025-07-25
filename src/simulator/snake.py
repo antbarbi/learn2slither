@@ -40,7 +40,20 @@ def _get_random_adjacent(snake: list[tuple[int, int]], coor: tuple[int, int], gr
 class Snake:
     def __init__(self):
         self.reset()
-        self.last_action = Action.RIGHT
+
+    def _get_dir(self, head_coor: tuple[int, int], segment_coor: tuple[int, int]) -> Action:
+        dr = head_coor[0] - segment_coor[0]
+        dc = head_coor[1] - segment_coor[1]
+
+        if dr == -1:
+            direction = Action.UP
+        elif dr == 1:
+            direction = Action.DOWN
+        elif dc == -1:
+            direction = Action.LEFT
+        elif dc == 1:
+            direction = Action.RIGHT
+        return direction
 
     def _init_snake(self) -> list[tuple[int, int]]:
         coor = _get_random_coordinates()
@@ -49,6 +62,7 @@ class Snake:
             self.snake.append(
                 _get_random_adjacent(self.snake, self.snake[-1])
             )
+        self.last_action = self._get_dir(self.snake[0], self.snake[1])
 
     def _random_cell(self) -> tuple[int, int]:
         while True:
@@ -74,7 +88,7 @@ class Snake:
         self._init_snake()
 
         # Init Apples
-        for c in "GG":
+        for _ in "GG":
             self.green_apples.append(self._random_cell())
         self.red_apple = self._random_cell()
 
