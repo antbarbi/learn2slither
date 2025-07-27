@@ -38,44 +38,55 @@ def state_to_tuple(state_dict):
 def train_worker(worker_id, episodes, max_steps):
     env = Snake()
     agent = QLearningAgent(actions=[Action.UP, Action.DOWN, Action.LEFT, Action.RIGHT])
+    
     try:
         with open("q_table_merged.pkl", "rb") as f:
             agent.q = pickle.load(f)
     except FileNotFoundError:
         pass
+ 
     max_size = 3
+    total_size = 0
+    total_reward = 0
     for episode in tqdm.tqdm(range(episodes), desc=f"Worker {worker_id}"):
         env.reset()
         state = state_to_tuple(env.get_observation())
+        episode_max_size = len(env.snake)
+        episode_total_reward = 0
 
         for step in range(max_steps):
             action = agent.get_action(state)
-            max_size = max(max_size, len(env.snake))
+            episode_max_size = max(episode_max_size, len(env.snake))
+            max_size = max(episode_max_size, len(env.snake))
+            
             try:
                 env.step(action, step)
                 next_state = state_to_tuple(env.get_observation())
-                reward = env.get_event()
+                reward = env.get_reward()
+                episode_total_reward += reward
                 agent.update(state, action, reward, next_state)
                 state = next_state
-                
-                if any("G" in direction for direction in env.get_observation().values()):
-                    no_apple_steps = 0
-                else:
-                    no_apple_steps += 1
             except GameOver:
-                reward = env.get_event()
+                reward = env.get_reward()
+                episode_total_reward += reward
                 agent.update(state, action, reward, state)
                 break
         
         agent.decay_epsilon()
-        print(f"Worker {worker_id} max size: {max_size}")
+        total_size += episode_max_size
+        total_reward += episode_total_reward
     
+    avg_size = total_size / episodes
+    avg_reward = total_reward / episodes
+    print(f"Worker {worker_id} max size: {max_size:.2f}")
+    print(f"Worker {worker_id} average max size: {avg_size:.2f}")
+    print(f"Worker {worker_id} average total reward: {avg_reward:.2f}")
     agent.save_q_table(f"q_table_worker_{worker_id}.pkl")
 
 
-def train_main(workers=4, episodes=DEFAULT_EPISODES, steps=DEFAULT_MAX_STEPS):
+def train_main(workers=2, episodes=DEFAULT_EPISODES, steps=DEFAULT_MAX_STEPS):
     num_workers = workers
-    episodes_per_worker = episodes // (num_workers // 1)
+    episodes_per_worker = episodes // num_workers
     for round in range(NUM_ROUNDS):
         processes = []
         for i in range(num_workers):

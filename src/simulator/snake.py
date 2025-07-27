@@ -43,6 +43,15 @@ class Snake:
     def __init__(self):
         self.reset()
 
+    @property
+    def reward(self):
+        return self._reward
+    
+    @reward.setter
+    def reward(self, value):
+        self.total_reward += value
+        self._reward = value
+
     def _get_dir(self, head_coor: tuple[int, int], segment_coor: tuple[int, int]) -> Action:
         dr = head_coor[0] - segment_coor[0]
         dc = head_coor[1] - segment_coor[1]
@@ -75,6 +84,7 @@ class Snake:
     def reset(self):
         self.last_moves = deque(maxlen=5)
         self.total_reward = 0
+        self.reward = 0
         # Init grid
         self.grid: list[list]                       = np.full((12, 12), '0', dtype='<U1')
 
@@ -96,50 +106,38 @@ class Snake:
             self.green_apples.append(self._random_cell())
         self.red_apple = self._random_cell()
 
-    def _update_reward(self, reward: float):
-        self.total_reward += reward
-        self.event = reward
-
     def step(self, action: Action, step: int) -> None:
+        self.reward = 0
         dr, dc = DIRECTION[action]
         head_row, head_col = self.snake[0]
         new_row, new_col = head_row + dr, head_col + dc
-
-        self.event = 0 # Default event: regular move
-        reward = 0
-
-        self.last_action = action
         coor = (new_row, new_col)
+
+        
+
         if not (1 <= new_row < self.grid.shape[0] - 1 and 1 <= new_col < self.grid.shape[1] - 1):
-            reward -= 100
+            self.reward -= 100
             raise GameOver("Hit a wall.")
         elif coor in self.snake:
-            reward -= 100
+            self.reward -= 100
             raise GameOver("Hit itself.")
         elif coor == self.red_apple:
             if len(self.snake) <= 1:
-                reward -= 100
+                self.reward -= 100
                 raise GameOver("Size went to 0.")
             self.snake.insert(0, coor)
             self.snake = self.snake[:-2]
             self.red_apple = self._random_cell()
-            reward -= 10
+            self.reward -= 10
         elif coor in self.green_apples:
             self.snake.insert(0, coor)
             self.green_apples.remove(coor)
             self.green_apples.append(self._random_cell())
-            reward += 20 + (1.5 * len(self.snake))
+            self.reward += 20 + (1.5 * len(self.snake))
         else:
             self.snake.insert(0, coor)
             self.snake.pop()
-            reward -= 0.5
-
-        # self.last_moves.append(action)
-        # if self.last_moves.count(action) > 3:
-        #     reward -= 1
-        
-
-        self._update_reward(reward)
+            self.reward -= 0.5
 
 
     def print(self):
@@ -231,12 +229,9 @@ class Snake:
         for cell in obs["down"]:
             print(" " * len(obs["left"]) + cell)
         print()
-
-    def get_event(self) -> float:
-        return self.event
     
     def get_reward(self) -> float:
-        return self.event
+        return self.reward
 
 
 if __name__ == "__main__":
