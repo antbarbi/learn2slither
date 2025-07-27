@@ -1,7 +1,7 @@
 import numpy as np
 import random
 from enum import Enum
-
+from collections import deque
 
 class Action(Enum):
     UP = 0
@@ -73,6 +73,7 @@ class Snake:
                 return coor
 
     def reset(self):
+        self.last_moves = deque(maxlen=5)
         self.total_reward = 0
         # Init grid
         self.grid: list[list]                       = np.full((12, 12), '0', dtype='<U1')
@@ -99,47 +100,47 @@ class Snake:
         self.total_reward += reward
         self.event = reward
 
-    def step(self, action: Action) -> None:
+    def step(self, action: Action, step: int) -> None:
         dr, dc = DIRECTION[action]
         head_row, head_col = self.snake[0]
         new_row, new_col = head_row + dr, head_col + dc
 
         self.event = 0 # Default event: regular move
-
-        # # Prevent moving into the second segment
-        # if len(self.snake) > 1 and (new_row, new_col) == self.snake[1]:
-        #     print("Invalid move: cannot move into the second segment!")
-        #     return
+        reward = 0
 
         self.last_action = action
         coor = (new_row, new_col)
         if not (1 <= new_row < self.grid.shape[0] - 1 and 1 <= new_col < self.grid.shape[1] - 1):
-            self._update_reward(-100)
+            reward -= 100
             raise GameOver("Hit a wall.")
         elif coor in self.snake:
-            self._update_reward(-100)
+            reward -= 100
             raise GameOver("Hit itself.")
         elif coor == self.red_apple:
             if len(self.snake) <= 1:
-                self._update_reward(-100)
+                reward -= 100
                 raise GameOver("Size went to 0.")
             self.snake.insert(0, coor)
             self.snake = self.snake[:-2]
             self.red_apple = self._random_cell()
-            self._update_reward(-5)
+            reward -= 10
         elif coor in self.green_apples:
             self.snake.insert(0, coor)
             self.green_apples.remove(coor)
             self.green_apples.append(self._random_cell())
-            self._update_reward(100)
+            reward += 20 + (1.5 * len(self.snake))
         else:
             self.snake.insert(0, coor)
             self.snake.pop()
-            self._update_reward(-0.1)
+            reward -= 0.5
 
-        obs = self.get_observation()
-        if "G" in obs["up"] or "G" in obs["down"] or "G" in obs["left"] or "G" in obs["right"]:
-            self._update_reward(1)  # Small positive reward for seeing a green apple
+        # self.last_moves.append(action)
+        # if self.last_moves.count(action) > 3:
+        #     reward -= 1
+        
+
+        self._update_reward(reward)
+
 
     def print(self):
         color_map = {
@@ -232,6 +233,9 @@ class Snake:
         print()
 
     def get_event(self) -> float:
+        return self.event
+    
+    def get_reward(self) -> float:
         return self.event
 
 
