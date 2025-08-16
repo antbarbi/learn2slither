@@ -13,7 +13,7 @@ def main(weights: str, episodes: int, steps: int, state_fn: str = "base", reward
     env.reset()
     fe = SnakeFeatureEngineering(state_type=state_fn, reward_type=reward_fn)
     state_dim = len(fe.extract_state(env))  # dynamic features depending on state function
-    action_dim = 4
+    action_dim = 3
     
     print(f"State dimension: {state_dim}, Action dimension: {action_dim}, state_fn: {state_fn}, reward_fn: {reward_fn}")
     
@@ -53,11 +53,12 @@ def main(weights: str, episodes: int, steps: int, state_fn: str = "base", reward
                     return
             
             # Get action from DQN agent
-            action_idx = agent.get_action(state)
-            action = [Action.UP, Action.DOWN, Action.LEFT, Action.RIGHT][action_idx]
-            
+            rel_action = int(agent.get_action(state))                     # 0/1/2 relative
+            abs_action = fe.relative_to_action(env, rel_action)          # map to absolute Action
             # Step the environment using the selected reward function
-            reward, done = fe.step_and_compute_reward(env, action)
+            reward, done = fe.step_and_compute_reward(env, abs_action)
+            # debug
+            print(f"rel={rel_action} -> abs={abs_action.name}")
             episode_reward += reward
             if done:
                 break
@@ -65,8 +66,7 @@ def main(weights: str, episodes: int, steps: int, state_fn: str = "base", reward
             draw_game(screen, env)
             pygame.display.flip()
             time.sleep(0.1)
-            
-            print(f"Action: {action.name}")
+
             env.print_observation()
             print(
                 f"Snake size: {len(env.snake)}, "

@@ -23,7 +23,7 @@ def train_genetic_DQN(generations=50, population_size=20, episodes_per_generatio
     env.reset()
     fe = SnakeFeatureEngineering(state_type=state_type, reward_type=reward_type)
     state_dim = len(fe.extract_state(env))  # dynamic state size based on chosen state_fn
-    action_dim = 4
+    action_dim = 3
     
     print(f"State dimension: {state_dim}, Action dimension: {action_dim}")
     
@@ -101,7 +101,7 @@ def train_DQN(episodes=DEFAULT_EPISODES, steps=DEFAULT_MAX_STEPS, rounds=DEFAULT
     fe = SnakeFeatureEngineering(state_type=state_type, reward_type=reward_type)
     print(fe.extract_state(env))
     state_dim = len(fe.extract_state(env))
-    action_dim = 4
+    action_dim = 3
     
     print(f"State dimension: {state_dim}, Action dimension: {action_dim}")
     
@@ -131,14 +131,17 @@ def train_DQN(episodes=DEFAULT_EPISODES, steps=DEFAULT_MAX_STEPS, rounds=DEFAULT
             fe.total_reward = 0
             
             for step in range(steps):
-                
-                action = agent.get_action(state)
-                reward, done = fe.step_and_compute_reward(env, action)   # <- returns (reward, done)
+                # Agent returns a relative action index: 0=forward,1=left,2=right
+                rel_action = int(agent.get_action(state))
+                # Map relative -> absolute action before stepping the env
+                abs_action = fe.relative_to_action(env, rel_action)
+                reward, done = fe.step_and_compute_reward(env, abs_action)   # <- returns (reward, done)
                 next_state = fe.extract_state(env)
                 episode_reward += reward
                 steps_taken += 1
 
-                agent.remember(state, action, reward, next_state, done)
+                # Store relative action index in replay buffer
+                agent.remember(state, rel_action, reward, next_state, done)
                 agent.train()
 
                 state = next_state
