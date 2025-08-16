@@ -262,8 +262,6 @@ class SnakeFeatureEngineering:
         self.state_fn = self.STATE_FUNCTIONS[state_type]
         self.reward_fn = self.REWARD_FUNCTIONS[reward_type]
         self.total_reward = 0
-        self.history_k = history_k
-        self._hist = deque(maxlen=history_k)
 
     def extract_state(self, env):
         return flatten_state(self.state_fn(env))
