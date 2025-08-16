@@ -17,14 +17,14 @@ DIRECTION = {
 }
 
 class GameOver(Exception):
-    def __init__(self, message):
+    def __init__(self, message=None, info: None | dict = None):
         if message:
             super().__init__(f"Game Over: {message}")
         else:
             super().__init__("Game Over.")
+        self.info = info or {}
 
 def _get_random_coordinates() -> tuple[int, int]:
-    # Avoid walls (first and last rows/columns)
     return np.random.randint(1, 11), np.random.randint(1, 11)
 
 def _get_random_adjacent(snake: list[tuple[int, int]], coor: tuple[int, int], grid_size: int = 12):
@@ -42,15 +42,6 @@ def _get_random_adjacent(snake: list[tuple[int, int]], coor: tuple[int, int], gr
 class Snake:
     def __init__(self):
         self.reset()
-
-    @property
-    def reward(self):
-        return self._reward
-    
-    @reward.setter
-    def reward(self, value):
-        self.total_reward += value
-        self._reward = value
 
     def _get_dir(self, head_coor: tuple[int, int], segment_coor: tuple[int, int]) -> Action:
         dr = head_coor[0] - segment_coor[0]
@@ -83,8 +74,6 @@ class Snake:
 
     def reset(self):
         self.last_moves = deque(maxlen=5)
-        self.total_reward = 0
-        self.reward = 0
         # Init grid
         self.grid: list[list]                       = np.full((12, 12), '0', dtype='<U1')
 
@@ -106,39 +95,60 @@ class Snake:
             self.green_apples.append(self._random_cell())
         self.red_apple = self._random_cell()
 
-    def step(self, action: Action, step: int) -> None:
-        self.reward = 0
+    def step(self, action: Action) -> None:
         dr, dc = DIRECTION[action]
         head_row, head_col = self.snake[0]
         new_row, new_col = head_row + dr, head_col + dc
         coor = (new_row, new_col)
 
-        
+        self.ate_green = False
+        self.ate_red = False
+        self.ate_apple = False
+        self.died = False
+        self.last_event = None
+
+        self.last_action = action
 
         if not (1 <= new_row < self.grid.shape[0] - 1 and 1 <= new_col < self.grid.shape[1] - 1):
-            self.reward -= 100
-            raise GameOver("Hit a wall.")
+            self.died = True
+            self.last_event = "hit_wall"
+            info = {"ate_green_apple": False, "ate_red_apple": False, "died": True}
+            raise GameOver("Hit a wall.", info=info)
+
         elif coor in self.snake:
-            self.reward -= 100
-            raise GameOver("Hit itself.")
+            self.died = True
+            self.last_event = "hit_self"
+            info = {"ate_green_apple": False, "ate_red_apple": False, "died": True}
+            raise GameOver("Hit itself.", info=info)
+
         elif coor == self.red_apple:
             if len(self.snake) <= 1:
-                self.reward -= 100
-                raise GameOver("Size went to 0.")
+                self.died = True
+                self.last_event = "size_zero"
+                info = {"ate_green_apple": False, "ate_red_apple": True, "died": True}
+                raise GameOver("Size went to 0.", info=info)
             self.snake.insert(0, coor)
             self.snake = self.snake[:-2]
             self.red_apple = self._random_cell()
-            self.reward -= 10
+            self.ate_red = True
+            self.ate_apple = True
+            self.last_event = "ate_red"
+            info = {"ate_green_apple": False, "ate_red_apple": True, "died": False}
+            return info
         elif coor in self.green_apples:
             self.snake.insert(0, coor)
             self.green_apples.remove(coor)
             self.green_apples.append(self._random_cell())
-            self.reward += 20 + (1.5 * len(self.snake))
+            self.ate_green = True
+            self.last_event = "ate_green"
+            info = {"ate_green_apple": True, "ate_red_apple": False, "died": False}
+            return info
         else:
             self.snake.insert(0, coor)
             self.snake.pop()
-            self.reward -= 0.5
-
+            self.last_event = "moved"
+            info = {"ate_green_apple": False, "ate_red_apple": False, "died": False}
+            return info
 
     def print(self):
         color_map = {
@@ -216,6 +226,9 @@ class Snake:
             vision["right"].append(cell)
             if self.grid[head_row, c] == "W":
                 break
+
+        for k in vision:
+            vision[k] = np.array(vision[k], dtype='<U1')
         return vision
 
     def print_observation(self):
@@ -229,9 +242,6 @@ class Snake:
         for cell in obs["down"]:
             print(" " * len(obs["left"]) + cell)
         print()
-    
-    def get_reward(self) -> float:
-        return self.reward
 
 
 if __name__ == "__main__":
@@ -242,10 +252,13 @@ if __name__ == "__main__":
         "a": Action.LEFT,
         "d": Action.RIGHT
     }
-    print(snake.get_observation())
+    print(snake.get_state())
+    print(len(snake.get_state()))
     try:
         while True:
             snake.print()
-            snake.step(INPUT_MAP[input()])
+            snake.step(INPUT_MAP[input()], 0)
+            print(snake.get_observation())
+            print(snake.get_state())
     except GameOver as e:
         print(e)

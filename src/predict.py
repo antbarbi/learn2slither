@@ -1,67 +1,94 @@
 import argparse
 import pygame
 import time
+import numpy as np
 from simulator.render import WINDOW_SIZE, draw_game
-from simulator.snake import Snake, GameOver, Action
-from agent import QLearningAgent
+from simulator.feature_engineering import Snake, GameOver, Action, SnakeFeatureEngineering
+from agents.dqn_agent import DQNAgent
 
-
-def state_to_tuple(state_dict):
-    return tuple(tuple(v) for v in state_dict.values())
-
-
-def main(weights: str, episodes: int, steps: int):
+def main(weights: str, episodes: int, steps: int, state_fn: str = "base", reward_fn: str = "base"):
     env = Snake()
-    agent = QLearningAgent(actions=[Action.UP, Action.DOWN, Action.LEFT, Action.RIGHT], epsilon=0)
+    
+    # Instantiate feature engineering chosen by CLI
+    env.reset()
+    fe = SnakeFeatureEngineering(state_type=state_fn, reward_type=reward_fn)
+    state_dim = len(fe.extract_state(env))  # dynamic features depending on state function
+    action_dim = 4
+    
+    print(f"State dimension: {state_dim}, Action dimension: {action_dim}, state_fn: {state_fn}, reward_fn: {reward_fn}")
+    
+    # Create DQN agent with no exploration (epsilon=0 for inference)
+    agent = DQNAgent(state_dim, action_dim)
+    agent.epsilon = 0  # No exploration during prediction
+    
     max_snake_size = 0
     try:
-        print("Loading Q table...")
-        agent.load_q_table(weights)
-    except Exception:
-        print("No weights detected")
+        print("Loading DQN model...")
+        success = agent.load_model(weights)
+        if not success:
+            print("Failed to load model. Please check the file path.")
+            return
+    except Exception as e:
+        print(f"Error loading model: {e}")
+        print("Make sure you're using a valid .pt model file from genetic DQN training.")
         return
-    print("Q table loaded !")
+    print("DQN model loaded successfully!")
 
     pygame.init()
     screen = pygame.display.set_mode((WINDOW_SIZE, WINDOW_SIZE))
-    pygame.display.set_caption("Learn2Slither")
+    pygame.display.set_caption("Learn2Slither - Genetic DQN Agent")
+    
     for episode in range(episodes):
         env.reset()
+        episode_reward = 0
+        
         for step in range(steps):
-            state = state_to_tuple(env.get_observation())
+            # Use get_state() instead of get_observation()
+            state = fe.extract_state(env)
             max_snake_size = max(max_snake_size, len(env.snake))
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
+                    pygame.quit()
                     return
-            action = agent.get_action(state)
             
-            try:
-                env.step(action, step)
-            except GameOver as e:
-                with open("error.txt", "a") as error_file:  # Use "a" to append
-                    error_file.write(f"Episode {episode}, Step {step}: {str(e)}\n")
+            # Get action from DQN agent
+            action_idx = agent.get_action(state)
+            action = [Action.UP, Action.DOWN, Action.LEFT, Action.RIGHT][action_idx]
+            
+            # Step the environment using the selected reward function
+            reward, done = fe.step_and_compute_reward(env, action)
+            episode_reward += reward
+            if done:
                 break
 
             draw_game(screen, env)
             pygame.display.flip()
             time.sleep(0.1)
-            print(action)
+            
+            print(f"Action: {action.name}")
             env.print_observation()
             print(
-                "Actual size :", len(env.snake),
-                "Best size :", max_snake_size,
-                "step :",step,
-                "reward :", env.total_reward
+                f"Snake size: {len(env.snake)}, "
+                f"Best size: {max_snake_size}, "
+                f"Step: {step}, "
+                f"Episode reward: {episode_reward:.1f}, "
             )
+        
+        print(f"Episode {episode + 1} finished. Final reward: {episode_reward:.1f}")
 
     pygame.quit()
+    print(f"All episodes completed. Best snake size achieved: {max_snake_size}")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("weights", help="Path to weights file") 
-    parser.add_argument("--episodes", "-e", type=int, default=50)
-    parser.add_argument("--steps", "-s", type=int, default=300)
+    parser.add_argument("weights", help="Path to genetic DQN model file (.pt)") 
+    parser.add_argument("--episodes", "-e", type=int, default=5)
+    parser.add_argument("--steps", "-s", type=int, default=500)
+    parser.add_argument("--state-fn", choices=list(SnakeFeatureEngineering.STATE_FUNCTIONS.keys()),
+                        default="base", help="Which state function to use for feature extraction")
+    parser.add_argument("--reward-fn", choices=list(SnakeFeatureEngineering.REWARD_FUNCTIONS.keys()),
+                        default="base", help="Which reward function to use during prediction")
     args = parser.parse_args()
-    main(args.weights ,args.episodes, args.steps)
+    main(args.weights, args.episodes, args.steps, state_fn=args.state_fn, reward_fn=args.reward_fn)
