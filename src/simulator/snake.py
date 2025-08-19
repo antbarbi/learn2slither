@@ -24,8 +24,9 @@ class GameOver(Exception):
             super().__init__("Game Over.")
         self.info = info or {}
 
-def _get_random_coordinates() -> tuple[int, int]:
-    return np.random.randint(1, 11), np.random.randint(1, 11)
+def _get_random_coordinates(grid_size: int = 12) -> tuple[int, int]:
+    return np.random.randint(1, grid_size-1), np.random.randint(1, grid_size-1)
+
 
 def _get_random_adjacent(snake: list[tuple[int, int]], coor: tuple[int, int], grid_size: int = 12):
     row, col = coor
@@ -40,8 +41,9 @@ def _get_random_adjacent(snake: list[tuple[int, int]], coor: tuple[int, int], gr
     return random.choice(valid)
 
 class Snake:
-    def __init__(self):
-        self.reset()
+    def __init__(self, snake_size=3, grid_size: int = 12):
+        self.grid_size = grid_size
+        self.reset(size=snake_size)
 
     def _get_dir(self, head_coor: tuple[int, int], segment_coor: tuple[int, int]) -> Action:
         dr = head_coor[0] - segment_coor[0]
@@ -57,25 +59,25 @@ class Snake:
             direction = Action.RIGHT
         return direction
 
-    def _init_snake(self) -> list[tuple[int, int]]:
-        coor = _get_random_coordinates()
+    def _init_snake(self, size=3) -> list[tuple[int, int]]:
+        coor = _get_random_coordinates(self.grid_size)
         self.snake.append(coor)
-        for _ in range(2):
+        for _ in range(size - 1):
             self.snake.append(
-                _get_random_adjacent(self.snake, self.snake[-1])
+                _get_random_adjacent(self.snake, self.snake[-1], self.grid_size)
             )
         self.last_action = self._get_dir(self.snake[0], self.snake[1])
 
     def _random_cell(self) -> tuple[int, int]:
         while True:
-            coor = _get_random_coordinates()
+            coor = _get_random_coordinates(self.grid_size)
             if coor not in self.snake and coor not in self.green_apples and coor != self.red_apple:
                 return coor
 
-    def reset(self):
+    def reset(self, size=3):
         self.last_moves = deque(maxlen=5)
         # Init grid
-        self.grid: list[list]                       = np.full((12, 12), '0', dtype='<U1')
+        self.grid: list[list] = np.full((self.grid_size, self.grid_size), '0', dtype='<U1')
 
         # Fill edges with 'W'
         self.grid[0, :] = 'W'
@@ -83,12 +85,12 @@ class Snake:
         self.grid[:, 0] = 'W'
         self.grid[:, -1] = 'W'
 
-        self.snake: list[tuple[int, int]]           = []
-        self.green_apples: list[tuple[int, int]]    = []
-        self.red_apple: tuple[int, int]             = ()
+        self.snake: list[tuple[int, int]] = []
+        self.green_apples: list[tuple[int, int]] = []
+        self.red_apple: tuple[int, int] = ()
 
         # Init Snake
-        self._init_snake()
+        self._init_snake(size=size)
 
         # Init Apples
         for _ in "GG":

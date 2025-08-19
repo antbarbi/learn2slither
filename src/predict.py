@@ -11,7 +11,8 @@ def main(weights: str, episodes: int, steps: int, state_fn: str = "base", reward
     
     # Instantiate feature engineering chosen by CLI
     env.reset()
-    fe = SnakeFeatureEngineering(state_type=state_fn, reward_type=reward_fn)
+    fe = SnakeFeatureEngineering(state_type=state_fn, reward_type=reward_fn, history_k=10)
+    fe.reset_history(env)
     state_dim = len(fe.extract_state(env))  # dynamic features depending on state function
     action_dim = 3
     
@@ -40,6 +41,7 @@ def main(weights: str, episodes: int, steps: int, state_fn: str = "base", reward
     
     for episode in range(episodes):
         env.reset()
+        fe.reset_history(env)
         episode_reward = 0
         
         for step in range(steps):

@@ -258,13 +258,25 @@ class SnakeFeatureEngineering:
         'base': base_reward,
     }
     
-    def __init__(self, state_type='base', reward_type='base', history_k=4):
+    def __init__(self, state_type='base', reward_type='base', history_k=5):
         self.state_fn = self.STATE_FUNCTIONS[state_type]
         self.reward_fn = self.REWARD_FUNCTIONS[reward_type]
         self.total_reward = 0
+        self.history_k = history_k
+        self._hist = deque(maxlen=history_k)
+
+    def reset_history(self, env):
+        # start with a blank (zero) history so the earliest frames contain no info
+        s = flatten_state(self.state_fn(env))
+        zero = np.zeros_like(s, dtype=np.float32)
+        self._hist.clear()
+        for _ in range(self.history_k):
+            self._hist.append(zero.copy())
 
     def extract_state(self, env):
-        return flatten_state(self.state_fn(env))
+        s = flatten_state(self.state_fn(env))
+        self._hist.append(s)
+        return np.concatenate(list(self._hist), axis=0)
 
     def relative_to_action(self, env: Snake, rel_idx: int) -> Action:
         """Map relative index (0=forward,1=left,2=right) -> absolute Action."""

@@ -1,8 +1,7 @@
 import os
-os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'  # Add this line FIRST
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'  # hide pygame support prompt when importing pygame
 
 from simulator.feature_engineering import SnakeFeatureEngineering, Snake, GameOver, Action
-from agents.genetic_dqn_agent import GeneticDQNAgent
 import numpy as np
 
 DEFAULT_ROUNDS = 1
@@ -13,82 +12,7 @@ def flatten_state(state_list):
     """Convert state list to numpy array for DQN input"""
     return np.array([item['value'] for item in state_list], dtype=np.float32)
 
-def train_genetic_DQN(generations=50, population_size=20, episodes_per_generation=100, evaluation_episodes=20,
-                      state_type: str = "base", reward_type: str = "base"):
-    """Train using Genetic Algorithm + DQN"""
-    os.makedirs("models", exist_ok=True)
-    
-    # Get state dimensions from a dummy environment using the requested feature engineering
-    env = Snake()
-    env.reset()
-    fe = SnakeFeatureEngineering(state_type=state_type, reward_type=reward_type)
-    state_dim = len(fe.extract_state(env))  # dynamic state size based on chosen state_fn
-    action_dim = 3
-    
-    print(f"State dimension: {state_dim}, Action dimension: {action_dim}")
-    
-    # Create genetic DQN agent
-    genetic_agent = GeneticDQNAgent(
-        state_dim,
-        action_dim,
-        population_size=population_size,
-        base_model_path="./dqn_best.pt"
-    )
-    
-    best_fitness_history = []
-    
-    for generation in range(generations):
-        print(f"\n=== Generation {generation + 1}/{generations} ===", flush=True)
-        
-        # Train population
-        print("Training population...")
-        genetic_agent.train_population(episodes=episodes_per_generation, n_jobs=-2)
-        
-        # Evaluate population
-        print("Evaluating population...")
-        genetic_agent.evaluate_population(episodes=evaluation_episodes, n_jobs=-2)
-        
-        # Print fitness statistics
-        fitness_scores = genetic_agent.fitness
-        best_fitness = max(fitness_scores)
-        avg_fitness = np.mean(fitness_scores)
-        worst_fitness = min(fitness_scores)
-        
-        print(f"Generation {generation + 1} Results:")
-        print(f"  Best Fitness: {best_fitness:.2f}")
-        print(f"  Average Fitness: {avg_fitness:.2f}")
-        print(f"  Worst Fitness: {worst_fitness:.2f}")
-        print(f"  Current Epsilon: {genetic_agent.population[0].epsilon:.3f}")
-        print(f"  Generation: {genetic_agent.generation}")
-        
-        best_fitness_history.append(best_fitness)
-        
-        # Save best agent from this generation
-        best_agent_idx = np.argmax(fitness_scores)
-        best_agent = genetic_agent.population[best_agent_idx]
-        best_agent.save_model(f"models/genetic_best_gen_{generation + 1}.pt")
-        
-        # Evolve to next generation
-        print("Evolving to next generation...")
-        genetic_agent.evolve(random_injection=0.1)
-        
-        # Early stopping if converged
-        if generation >= 5:
-            recent_best = best_fitness_history[-5:]
-            if max(recent_best) - min(recent_best) < 1.0:
-                print("Population converged! Stopping early.")
-                break
-    
-    # Save final best agent
-    genetic_agent.evaluate_population(episodes=evaluation_episodes, n_jobs=-2)
-    final_best_idx = np.argmax(genetic_agent.fitness)
-    final_best_agent = genetic_agent.population[final_best_idx]
-    final_best_agent.save_model("models/genetic_final_best.pt")
-    
-    print(f"\nTraining completed! Best fitness: {max(genetic_agent.fitness):.2f}")
-    print("Final best model saved as 'models/genetic_final_best.pt'")
-    
-    return final_best_agent
+# Genetic DQN support removed — training now uses standard DQN only
 
 def train_DQN(episodes=DEFAULT_EPISODES, steps=DEFAULT_MAX_STEPS, rounds=DEFAULT_ROUNDS,
               state_type: str = "base", reward_type: str = "base"):
@@ -96,9 +20,10 @@ def train_DQN(episodes=DEFAULT_EPISODES, steps=DEFAULT_MAX_STEPS, rounds=DEFAULT
     os.makedirs("models", exist_ok=True)
     
     # Get state dimensions from environment using selected feature engineering
-    env = Snake()
-    env.reset()
-    fe = SnakeFeatureEngineering(state_type=state_type, reward_type=reward_type)
+    env = Snake(snake_size=20)
+    env.reset(size=20)
+    fe = SnakeFeatureEngineering(state_type=state_type, reward_type=reward_type, history_k=10)
+    fe.reset_history(env)
     print(fe.extract_state(env))
     state_dim = len(fe.extract_state(env))
     action_dim = 3
@@ -125,6 +50,7 @@ def train_DQN(episodes=DEFAULT_EPISODES, steps=DEFAULT_MAX_STEPS, rounds=DEFAULT
         
         for episode in range(episodes):
             env.reset()
+            fe.reset_history(env)
             state = fe.extract_state(env)
             episode_reward = 0
             steps_taken = 0
@@ -191,9 +117,7 @@ if __name__ == "__main__":
     parser.add_argument("--episodes", "-e", type=int, default=DEFAULT_EPISODES)
     parser.add_argument("--steps", "-s", type=int, default=DEFAULT_MAX_STEPS)
     parser.add_argument("--rounds", "-r", type=int, default=DEFAULT_ROUNDS)
-    parser.add_argument("--genetic", action="store_true", help="Use genetic DQN training")
-    parser.add_argument("--generations", "-g", type=int, default=50, help="Number of generations for genetic training")
-    parser.add_argument("--population", "-p", type=int, default=10, help="Population size for genetic training")
+    # (genetic training removed)
     # Feature engineering selection
     parser.add_argument("--state-fn", choices=list(SnakeFeatureEngineering.STATE_FUNCTIONS.keys()),
                         default="base", help="Which state function to use from simulator.feature_engineering")
@@ -202,15 +126,5 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
     
-    if args.genetic:
-        train_genetic_DQN(
-            generations=args.generations,
-            population_size=args.population,
-            episodes_per_generation=200,
-            evaluation_episodes=20,
-            state_type=args.state_fn,
-            reward_type=args.reward_fn,
-        )
-    else:
-        train_DQN(episodes=args.episodes, steps=args.steps, rounds=args.rounds,
-                  state_type=args.state_fn, reward_type=args.reward_fn)
+    train_DQN(episodes=args.episodes, steps=args.steps, rounds=args.rounds,
+              state_type=args.state_fn, reward_type=args.reward_fn)

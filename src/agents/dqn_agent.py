@@ -34,7 +34,7 @@ class DQN(nn.Module):
         return self.fc(x)
 
 class DQNAgent:
-    def __init__(self, state_dim, action_dim, lr=0.001, gamma=0.99, batch_size=128, memory_size=10000):
+    def __init__(self, state_dim, action_dim, lr=0.00005, gamma=0.99, batch_size=128, memory_size=10000):
         # Set device (GPU if available, otherwise CPU)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         # print(f"Using device: {self.device}")
@@ -46,7 +46,7 @@ class DQNAgent:
         self.gamma = gamma
         self.batch_size = batch_size
         self.memory = deque(maxlen=memory_size)
-        self.epsilon = 1.0
+        self.epsilon = 0.5
         self.epsilon_min = 0.05
         self.epsilon_decay = 0.995
         self.loss_fn = nn.MSELoss()
@@ -96,9 +96,30 @@ class DQNAgent:
         torch.save(self.model.state_dict(), path)
 
     def load_model(self, path):
-        if os.path.exists(path):
-            self.model.load_state_dict(torch.load(path, map_location=self.device))
+        if not os.path.exists(path):
+            return False
+
+        loaded = torch.load(path, map_location=self.device)
+        # Try strict load first
+        try:
+            self.model.load_state_dict(loaded)
             self.update_target()
             return True
-        return False
+        except (RuntimeError, ValueError) as e:
+            # Fallback: copy only tensors whose shapes match
+            model_sd = self.model.state_dict()
+            to_copy = {}
+            for k, v in loaded.items():
+                if k in model_sd and isinstance(v, torch.Tensor) and v.size() == model_sd[k].size():
+                    to_copy[k] = v
+
+            if not to_copy:
+                # Nothing compatible to copy
+                raise e
+
+            model_sd.update(to_copy)
+            self.model.load_state_dict(model_sd)
+            self.update_target()
+            print(f"Warning: partially loaded model from {path} — skipped {len(loaded) - len(to_copy)} tensors due to shape mismatch.")
+            return True
 
