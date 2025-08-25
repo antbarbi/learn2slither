@@ -246,21 +246,4 @@ class Snake:
         print()
 
 
-if __name__ == "__main__":
-    snake = Snake()
-    INPUT_MAP = {
-        "w": Action.UP,
-        "s": Action.DOWN,
-        "a": Action.LEFT,
-        "d": Action.RIGHT
-    }
-    print(snake.get_state())
-    print(len(snake.get_state()))
-    try:
-        while True:
-            snake.print()
-            snake.step(INPUT_MAP[input()], 0)
-            print(snake.get_observation())
-            print(snake.get_state())
-    except GameOver as e:
-        print(e)
+# NOTE: interactive demo moved to simulator/feature_engineering.py __main__

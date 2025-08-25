@@ -69,74 +69,45 @@ def is_there(arr, elem, grid_size: int = 12) -> float:
 
 # --- State extraction functions ------------------------------------------------
 
-def distance_state(env: Snake) -> np.ndarray:
+def relative_state(env: Snake) -> np.ndarray:
         obs = env.get_observation()
 
+        # Map absolute observations to relative directions based on heading
+        heading = get_heading(env)
+        if heading == Action.UP:
+            rel = {'forward': obs['up'], 'back': obs['down'], 'left': obs['left'], 'right': obs['right']}
+        elif heading == Action.DOWN:
+            rel = {'forward': obs['down'], 'back': obs['up'], 'left': obs['right'], 'right': obs['left']}
+        elif heading == Action.LEFT:
+            rel = {'forward': obs['left'], 'back': obs['right'], 'left': obs['down'], 'right': obs['up']}
+        else:
+            rel = {'forward': obs['right'], 'back': obs['left'], 'left': obs['up'], 'right': obs['down']}
+
         state = [
-            {
-                "label": "danger_up",
-                "value": True if obs["up"][0] == "W" or obs["up"][0] == "S" else False,
-            },
-            {
-                "label": "danger_down",
-                "value": True if obs["down"][0] == "W" or obs["down"][0] == "S" else False,
-            },
-            {
-                "label": "danger_left",
-                "value": True if obs["left"][0] == "W" or obs["left"][0] == "S" else False,
-            },
-            {
-                "label": "danger_right",
-                "value": True if obs["right"][0] == "W" or obs["right"][0] == "S" else False,
-            },
-            {
-                "label": "distance_to_danger_up",
-                "value": max(is_there(obs["up"], "W"), is_there(obs["up"], "S")),
-            },
-            {
-                "label": "distance_to_danger_down",
-                "value": max(is_there(obs["down"], "W"), is_there(obs["down"], "S")),
-            },
-            {
-                "label": "distance_to_danger_left",
-                "value": max(is_there(obs["left"], "W"), is_there(obs["left"], "S")),
-            },
-            {
-                "label": "distance_to_danger_right",
-                "value": max(is_there(obs["right"], "W"), is_there(obs["right"], "S")),
-            },
-            {
-                "label": "distance_to_green_up",
-                "value": is_there(obs["up"], "G"),
-            },
-            {
-                "label": "distance_to_green_down",
-                "value": is_there(obs["down"], "G"),
-            },
-            {
-                "label": "distance_to_green_left",
-                "value": is_there(obs["left"], "G"),
-            },
-            {
-                "label": "distance_to_green_right",
-                "value": is_there(obs["right"], "G"),
-            },
-            {
-                "label": "distance_to_red_up",
-                "value": is_there(obs["up"], "R"),
-            },
-            {
-                "label": "distance_to_red_down",
-                "value": is_there(obs["down"], "R"),
-            },
-            {
-                "label": "distance_to_red_left",
-                "value": is_there(obs["left"], "R"),
-            },
-            {
-                "label": "distance_to_red_right",
-                "value": is_there(obs["right"], "R"),
-            },
+            {"label": "danger_forward", "value": True if rel["forward"][0] == "W" or rel["forward"][0] == "S" else False},
+            {"label": "danger_back",    "value": True if rel["back"][0] == "W" or rel["back"][0] == "S" else False},
+            {"label": "danger_left",    "value": True if rel["left"][0] == "W" or rel["left"][0] == "S" else False},
+            {"label": "danger_right",   "value": True if rel["right"][0] == "W" or rel["right"][0] == "S" else False},
+
+            {"label": "distance_to_wall_forward", "value": is_there(rel["forward"], "W")},
+            {"label": "distance_to_wall_back",    "value": is_there(rel["back"], "W")},
+            {"label": "distance_to_wall_left",    "value": is_there(rel["left"], "W")},
+            {"label": "distance_to_wall_right",   "value": is_there(rel["right"], "W")},
+
+            {"label": "distance_to_snake_forward", "value": is_there(rel["forward"], "S")},
+            {"label": "distance_to_snake_back",    "value": is_there(rel["back"], "S")},
+            {"label": "distance_to_snake_left",    "value": is_there(rel["left"], "S")},
+            {"label": "distance_to_snake_right",   "value": is_there(rel["right"], "S")},
+
+            {"label": "distance_to_green_forward", "value": is_there(rel["forward"], "G")},
+            {"label": "distance_to_green_back",    "value": is_there(rel["back"], "G")},
+            {"label": "distance_to_green_left",    "value": is_there(rel["left"], "G")},
+            {"label": "distance_to_green_right",   "value": is_there(rel["right"], "G")},
+
+            {"label": "distance_to_red_forward", "value": is_there(rel["forward"], "R")},
+            {"label": "distance_to_red_back",    "value": is_there(rel["back"], "R")},
+            {"label": "distance_to_red_left",    "value": is_there(rel["left"], "R")},
+            {"label": "distance_to_red_right",   "value": is_there(rel["right"], "R")},
         ]
         return state
 
@@ -251,7 +222,7 @@ def base_reward(env: Snake, info: dict):
 class SnakeFeatureEngineering:
     STATE_FUNCTIONS = {
         'base': base_state,
-        'distance': distance_state,
+        'relative': relative_state,
     }
     
     REWARD_FUNCTIONS = {
@@ -330,51 +301,75 @@ class SnakeFeatureEngineering:
 # reward = fe.compute_reward(env)
 
 if __name__ == "__main__":
-    # Interactive loop similar to src/simulator/snake.py main: control with w/s/a/d keys
-    print("Interactive feature-engineering demo. Use w/s/a/d to move, q to quit.")
-    fe = SnakeFeatureEngineering(state_type='base', reward_type='base')
+    # Interactive feature-engineering demo. Accepts absolute (w/a/s/d) and relative (0/1/2)
+    # moves. Prints FE flattened state each step.
+    fe = SnakeFeatureEngineering(state_type='base', reward_type='base', history_k=1)
     env = Snake()
     env.reset()
+    fe.reset_history(env)
+
     INPUT_MAP = {
-        "w": (0),  # Action.UP
-        "s": (1),  # Action.DOWN
-        "a": (2),  # Action.LEFT
-        "d": (3),  # Action.RIGHT
+        "w": Action.UP,
+        "s": Action.DOWN,
+        "a": Action.LEFT,
+        "d": Action.RIGHT,
     }
+
+    def _relative_to_action(last_action: Action, rel_idx: int) -> Action:
+        heading = last_action if isinstance(last_action, Action) else Action.UP
+        dr, dc = DIRECTION[heading]
+        mapping = {
+            0: (dr, dc),
+            1: (-dc, dr),
+            2: (dc, -dr),
+        }
+        vec = mapping.get(int(rel_idx), (dr, dc))
+        for act, v in DIRECTION.items():
+            if v == vec:
+                return act
+        return heading
+
+    print("Interactive feature-engineering demo. Use w/s/a/d for absolute moves, 0/1/2 for relative moves, q to quit.")
     try:
         while True:
             state = fe.extract_state(env)
-            print("\nState dim:", state.size, "sample:", state[:12])
+            debug_state = relative_state(env)
+            print("\nFE state dim:", state.size)
             env.print()
-            key = input("move (w/a/s/d), q to quit: ").strip()
-            if key == 'q':
-                break
-            if key not in INPUT_MAP:
-                print("invalid input")
-                continue
-            act_idx = INPUT_MAP[key]
-            # show relative-action mask and mapping for current heading
-            try:
-                mask = fe.get_relative_action_mask(env)
-            except Exception:
-                mask = None
-            print("relative-action mask:", mask)
-            for rel in (0, 1, 2):
-                abs_act = fe.relative_to_action(env, rel)
-                print(f" relative {rel} -> absolute {abs_act} vec={DIRECTION[abs_act]}")
+            obs = env.get_observation()
+            print("Observation:")
+            for k, v in obs.items():
+                print(f"  {k}: {''.join(list(v))}")
+            print(f"Snake coords: {env.snake}")
+            print(f"Last action: {getattr(env, 'last_action', None)} | Last event: {getattr(env, 'last_event', None)}")
+            from pprint import pprint
+            pprint(debug_state)
 
-            abs_action = Action(act_idx)
+            raw = input("Action> ").strip().lower()
+            if raw == "q":
+                print("Quitting interactive session.")
+                break
+
+            if raw in INPUT_MAP:
+                action = INPUT_MAP[raw]
+            elif raw in ("0", "1", "2"):
+                action = _relative_to_action(getattr(env, 'last_action', Action.UP), int(raw))
+            else:
+                print("Unknown input. Use w/s/a/d or 0/1/2. q to quit.")
+                continue
+
             try:
-                info = env.step(abs_action)
+                info = env.step(action)
                 done = False
             except GameOver as e:
                 info = getattr(e, "info", {})
                 done = True
-            # print computed reward
+
             reward = fe.compute_reward(env, info)
-            print("reward:", reward, "done:", done, "info:", info)
+            print(f"reward: {reward}, done: {done}, info: {info}")
             if done:
                 print("Episode ended, resetting env")
                 env.reset()
+                fe.reset_history(env)
     except KeyboardInterrupt:
         print("exiting")

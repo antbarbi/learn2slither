@@ -6,12 +6,12 @@ from simulator.render import WINDOW_SIZE, draw_game
 from simulator.feature_engineering import Snake, GameOver, Action, SnakeFeatureEngineering
 from agents.dqn_agent import DQNAgent
 
-def main(weights: str, episodes: int, steps: int, state_fn: str = "base", reward_fn: str = "base"):
+def main(weights: str, episodes: int, steps: int, state_fn: str = "base", reward_fn: str = "base", history_k: int = 1):
     env = Snake()
     
     # Instantiate feature engineering chosen by CLI
     env.reset()
-    fe = SnakeFeatureEngineering(state_type=state_fn, reward_type=reward_fn, history_k=10)
+    fe = SnakeFeatureEngineering(state_type=state_fn, reward_type=reward_fn, history_k=history_k)
     fe.reset_history(env)
     state_dim = len(fe.extract_state(env))  # dynamic features depending on state function
     action_dim = 3
@@ -92,5 +92,7 @@ if __name__ == "__main__":
                         default="base", help="Which state function to use for feature extraction")
     parser.add_argument("--reward-fn", choices=list(SnakeFeatureEngineering.REWARD_FUNCTIONS.keys()),
                         default="base", help="Which reward function to use during prediction")
+    parser.add_argument("--history-k", type=int, default=1,
+                        help="How many historical frames to include in the flattened state (history_k). Default=1")
     args = parser.parse_args()
-    main(args.weights, args.episodes, args.steps, state_fn=args.state_fn, reward_fn=args.reward_fn)
+    main(args.weights, args.episodes, args.steps, state_fn=args.state_fn, reward_fn=args.reward_fn, history_k=args.history_k)

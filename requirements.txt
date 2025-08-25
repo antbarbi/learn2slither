@@ -1,8 +1,7 @@
---index-url https://download.pytorch.org/whl/cu118
+--extra-index-url https://download.pytorch.org/whl/cu118
 pygame
 numpy
 tqdm
 torch
 torchvision
 torchaudio
-joblib

@@ -34,7 +34,7 @@ class DQN(nn.Module):
         return self.fc(x)
 
 class DQNAgent:
-    def __init__(self, state_dim, action_dim, lr=0.00005, gamma=0.99, batch_size=128, memory_size=10000):
+    def __init__(self, state_dim, action_dim, lr=0.0001, gamma=0.99, batch_size=128, memory_size=10000):
         # Set device (GPU if available, otherwise CPU)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         # print(f"Using device: {self.device}")
@@ -46,7 +46,7 @@ class DQNAgent:
         self.gamma = gamma
         self.batch_size = batch_size
         self.memory = deque(maxlen=memory_size)
-        self.epsilon = 0.5
+        self.epsilon = 0.9
         self.epsilon_min = 0.05
         self.epsilon_decay = 0.995
         self.loss_fn = nn.MSELoss()
