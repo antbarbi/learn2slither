@@ -15,7 +15,7 @@ def main(
     history_k: int = 1,
     grid_size: int = 12,
     cell_size: int = 64):
-    env = Snake()
+    env = Snake(grid_size=grid_size)
 
     # Instantiate feature engineering chosen by CLI
     env.reset()

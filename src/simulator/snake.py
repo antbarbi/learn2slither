@@ -43,8 +43,12 @@ def _get_random_adjacent(
         (row - 1, col), (row + 1, col),
         (row, col - 1), (row, col + 1)
     ]
-    valid = [(r, c) for r, c in options if 1 <= r < grid_size -
-             1 and 1 <= c < grid_size - 1 and (r, c) not in snake]
+    valid = [
+        (r, c) for r, c in options
+        if 1 <= r < grid_size - 1 and 1 <= c < grid_size - 1 and (r, c) not in snake
+    ]
+    if not valid:
+        return None
     return random.choice(valid)
 
 
@@ -69,12 +73,33 @@ class Snake:
         return direction
 
     def _init_snake(self, size=3) -> list[tuple[int, int]]:
-        coor = _get_random_coordinates(self.grid_size)
-        self.snake.append(coor)
-        for _ in range(size - 1):
-            self.snake.append(_get_random_adjacent(
-                self.snake, self.snake[-1], self.grid_size))
-        self.last_action = self._get_dir(self.snake[0], self.snake[1])
+        # Attempt several random-start builds to create a connected snake
+        max_attempts = 100
+        for _ in range(max_attempts):
+            self.snake = []
+            coor = _get_random_coordinates(self.grid_size)
+            self.snake.append(coor)
+            ok = True
+            for _ in range(size - 1):
+                nxt = _get_random_adjacent(self.snake, self.snake[-1], self.grid_size)
+                if nxt is None:
+                    ok = False
+                    break
+                self.snake.append(nxt)
+            if ok:
+                if len(self.snake) > 1:
+                    self.last_action = self._get_dir(self.snake[0], self.snake[1])
+                else:
+                    self.last_action = Action.RIGHT
+                return
+
+        # Fallback deterministic placement at center (horizontal)
+        center = self.grid_size // 2
+        self.snake = [(center, center - i) for i in range(size)]
+        if len(self.snake) > 1:
+            self.last_action = self._get_dir(self.snake[0], self.snake[1])
+        else:
+            self.last_action = Action.RIGHT
 
     def _random_cell(self) -> tuple[int, int]:
         while True:
