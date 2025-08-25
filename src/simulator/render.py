@@ -172,33 +172,33 @@ def get_segment_type(snake: list[tuple[int, int]],
         return "body_horizontal"  # fallback
 
 
-def draw_game(screen, snake_engine):
-    images = load_images(CELL_SIZE)
+def draw_game(screen, snake_engine, grid_size: int = GRID_SIZE, cell_size: int = CELL_SIZE):
+    images = load_images(cell_size)
 
     # Draw the grid: wall on edges, background elsewhere
-    for row in range(GRID_SIZE):
-        for col in range(GRID_SIZE):
+    for row in range(grid_size):
+        for col in range(grid_size):
             if (
-                row == 0 or row == GRID_SIZE - 1
-                or col == 0 or col == GRID_SIZE - 1
+                row == 0 or row == grid_size - 1
+                or col == 0 or col == grid_size - 1
             ):
-                screen.blit(images["wall"], (col * CELL_SIZE, row * CELL_SIZE))
+                screen.blit(images["wall"], (col * cell_size, row * cell_size))
             else:
                 screen.blit(
                     images["background"],
-                    (col * CELL_SIZE,
-                     row * CELL_SIZE,
-                     CELL_SIZE,
-                     CELL_SIZE))
+                    (col * cell_size,
+                     row * cell_size,
+                     cell_size,
+                     cell_size))
 
     # Draw apples
     for apple in snake_engine.green_apples:
         screen.blit(
             images["green_apple"],
-            (apple[1] * CELL_SIZE,
-             apple[0] * CELL_SIZE))
+            (apple[1] * cell_size,
+             apple[0] * cell_size))
     r = snake_engine.red_apple
-    screen.blit(images["red_apple"], (r[1] * CELL_SIZE, r[0] * CELL_SIZE))
+    screen.blit(images["red_apple"], (r[1] * cell_size, r[0] * cell_size))
 
     # Draw snake
     for i, segment in enumerate(snake_engine.snake):
@@ -207,9 +207,9 @@ def draw_game(screen, snake_engine):
         screen.blit(
             images[img_key],
             (segment[1] *
-             CELL_SIZE,
+             cell_size,
              segment[0] *
-             CELL_SIZE))
+             cell_size))
 
     pygame.display.flip()
 

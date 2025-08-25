@@ -1,18 +1,20 @@
 import argparse
 import pygame
 import time
-from simulator.render import WINDOW_SIZE, draw_game
+from simulator.render import draw_game
 from simulator.feature_engineering import Snake, SnakeFeatureEngineering
 from agents.dqn_agent import DQNAgent
 
 
 def main(
-        weights: str,
-        episodes: int,
-        steps: int,
-        state_fn: str = "base",
-        reward_fn: str = "base",
-        history_k: int = 1):
+    weights: str,
+    episodes: int,
+    steps: int,
+    state_fn: str = "base",
+    reward_fn: str = "base",
+    history_k: int = 1,
+    grid_size: int = 12,
+    cell_size: int = 64):
     env = Snake()
 
     # Instantiate feature engineering chosen by CLI
@@ -51,8 +53,10 @@ def main(
         return
     print("DQN model loaded successfully!")
 
+    # Create pygame window sized to the requested board
     pygame.init()
-    screen = pygame.display.set_mode((WINDOW_SIZE, WINDOW_SIZE))
+    window_size = grid_size * cell_size
+    screen = pygame.display.set_mode((window_size, window_size))
     pygame.display.set_caption("Learn2Slither - Genetic DQN Agent")
 
     for episode in range(episodes):
@@ -83,8 +87,8 @@ def main(
             if done:
                 break
 
-            draw_game(screen, env)
-            pygame.display.flip()
+            draw_game(screen, env, grid_size=grid_size, cell_size=cell_size)
+            # draw_game already flips the display
             time.sleep(0.1)
 
             env.print_observation()
@@ -129,6 +133,18 @@ if __name__ == "__main__":
         help="How many historical frames to include in"
         "the flattened state (history_k). Default=1"
         )
+    parser.add_argument(
+        "--grid-size",
+        type=int,
+        default=12,
+        help="Board/grid size including walls. Default=12"
+    )
+    parser.add_argument(
+        "--cell-size",
+        type=int,
+        default=64,
+        help="Pixel size per cell for rendering. Default=64"
+    )
     args = parser.parse_args()
     main(
         args.weights,
@@ -136,4 +152,6 @@ if __name__ == "__main__":
         args.steps,
         state_fn=args.state_fn,
         reward_fn=args.reward_fn,
-        history_k=args.history_k)
+        history_k=args.history_k,
+        grid_size=args.grid_size,
+        cell_size=args.cell_size)
