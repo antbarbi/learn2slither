@@ -321,6 +321,30 @@ def base_reward(env: Snake, info: dict):
     # default per-step penalty
     return -0.5
 
+def enhanced_reward(env: Snake, info: dict):
+    # tolerate different key names and fall back to env attributes
+    info = info or {}
+    died = info.get("died", getattr(env, "died", False))
+    ate_red = info.get(
+        "ate_red", info.get(
+            "ate_red_apple", getattr(
+                env, "ate_red", False)))
+    ate_green = info.get(
+        "ate_green", info.get(
+            "ate_green_apple", getattr(
+                env, "ate_green", False)))
+    # Terminal death penalty
+    if died:
+        return -100.0
+    # Red apple penalty
+    if ate_red:
+        return -20.0 * (1.5 * (len(env.snake) + 1))
+    # Green apple reward (keep previous scaling)
+    if ate_green:
+        return 20.0 * (1.5 * len(env.snake))
+    # default per-step penalty
+    return -2.5
+
 # --- Main class ---------------------------------------------------------
 
 
@@ -332,6 +356,7 @@ class SnakeFeatureEngineering:
 
     REWARD_FUNCTIONS = {
         'base': base_reward,
+        'enhanced': enhanced_reward,
     }
 
     def __init__(self, state_type='base', reward_type='base', history_k=5):
