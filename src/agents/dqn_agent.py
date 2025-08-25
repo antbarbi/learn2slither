@@ -33,10 +33,19 @@ class DQN(nn.Module):
     def forward(self, x):
         return self.fc(x)
 
+
 class DQNAgent:
-    def __init__(self, state_dim, action_dim, lr=0.0001, gamma=0.99, batch_size=128, memory_size=10000):
+    def __init__(
+            self,
+            state_dim,
+            action_dim,
+            lr=0.0001,
+            gamma=0.99,
+            batch_size=128,
+            memory_size=10000):
         # Set device (GPU if available, otherwise CPU)
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device(
+            "cuda" if torch.cuda.is_available() else "cpu")
         # print(f"Using device: {self.device}")
 
         self.model = DQN(state_dim, action_dim).to(self.device)
@@ -75,7 +84,8 @@ class DQNAgent:
         dones = torch.BoolTensor(dones).to(self.device)
 
         with autocast(device_type=str(self.device)):
-            q_values = self.model(states).gather(1, actions.unsqueeze(1)).squeeze(1)
+            q_values = self.model(states).gather(
+                1, actions.unsqueeze(1)).squeeze(1)
             next_q_values = self.target_model(next_states).max(1)[0]
             target_q = rewards + self.gamma * next_q_values * (~dones)
             loss = self.loss_fn(q_values, target_q)
@@ -110,7 +120,8 @@ class DQNAgent:
             model_sd = self.model.state_dict()
             to_copy = {}
             for k, v in loaded.items():
-                if k in model_sd and isinstance(v, torch.Tensor) and v.size() == model_sd[k].size():
+                if k in model_sd and isinstance(
+                        v, torch.Tensor) and v.size() == model_sd[k].size():
                     to_copy[k] = v
 
             if not to_copy:
@@ -120,6 +131,9 @@ class DQNAgent:
             model_sd.update(to_copy)
             self.model.load_state_dict(model_sd)
             self.update_target()
-            print(f"Warning: partially loaded model from {path} — skipped {len(loaded) - len(to_copy)} tensors due to shape mismatch.")
+            print(
+                f"Warning: partially loaded model from {path} —",
+                f"skipped {len(loaded) - len(to_copy)}",
+                "tensors due to shape mismatch."
+            )
             return True
-

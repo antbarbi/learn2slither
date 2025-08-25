@@ -3,18 +3,21 @@ import random
 from enum import Enum
 from collections import deque
 
+
 class Action(Enum):
     UP = 0
     DOWN = 1
     LEFT = 2
     RIGHT = 3
 
+
 DIRECTION = {
-    Action.UP:      (-1, 0),
-    Action.DOWN:    (1, 0),
-    Action.LEFT:    (0, -1),
-    Action.RIGHT:   (0, 1)
+    Action.UP: (-1, 0),
+    Action.DOWN: (1, 0),
+    Action.LEFT: (0, -1),
+    Action.RIGHT: (0, 1)
 }
+
 
 class GameOver(Exception):
     def __init__(self, message=None, info: None | dict = None):
@@ -24,28 +27,34 @@ class GameOver(Exception):
             super().__init__("Game Over.")
         self.info = info or {}
 
+
 def _get_random_coordinates(grid_size: int = 12) -> tuple[int, int]:
-    return np.random.randint(1, grid_size-1), np.random.randint(1, grid_size-1)
+    return np.random.randint(
+        1, grid_size - 1), np.random.randint(1, grid_size - 1)
 
 
-def _get_random_adjacent(snake: list[tuple[int, int]], coor: tuple[int, int], grid_size: int = 12):
+def _get_random_adjacent(
+    snake: list[tuple[int, int]],
+    coor: tuple[int, int],
+    grid_size: int = 12
+):
     row, col = coor
     options = [
-        (row-1, col), (row+1, col),
-        (row, col-1), (row, col+1)
+        (row - 1, col), (row + 1, col),
+        (row, col - 1), (row, col + 1)
     ]
-    valid = [
-        (r, c) for r, c in options
-        if 1 <= r < grid_size-1 and 1 <= c < grid_size-1 and (r, c) not in snake
-    ]
+    valid = [(r, c) for r, c in options if 1 <= r < grid_size -
+             1 and 1 <= c < grid_size - 1 and (r, c) not in snake]
     return random.choice(valid)
+
 
 class Snake:
     def __init__(self, snake_size=3, grid_size: int = 12):
         self.grid_size = grid_size
         self.reset(size=snake_size)
 
-    def _get_dir(self, head_coor: tuple[int, int], segment_coor: tuple[int, int]) -> Action:
+    def _get_dir(self, head_coor: tuple[int, int],
+                 segment_coor: tuple[int, int]) -> Action:
         dr = head_coor[0] - segment_coor[0]
         dc = head_coor[1] - segment_coor[1]
 
@@ -63,21 +72,25 @@ class Snake:
         coor = _get_random_coordinates(self.grid_size)
         self.snake.append(coor)
         for _ in range(size - 1):
-            self.snake.append(
-                _get_random_adjacent(self.snake, self.snake[-1], self.grid_size)
-            )
+            self.snake.append(_get_random_adjacent(
+                self.snake, self.snake[-1], self.grid_size))
         self.last_action = self._get_dir(self.snake[0], self.snake[1])
 
     def _random_cell(self) -> tuple[int, int]:
         while True:
             coor = _get_random_coordinates(self.grid_size)
-            if coor not in self.snake and coor not in self.green_apples and coor != self.red_apple:
+            if (
+                coor not in self.snake
+                and coor not in self.green_apples
+                and coor != self.red_apple
+            ):
                 return coor
 
     def reset(self, size=3):
         self.last_moves = deque(maxlen=5)
         # Init grid
-        self.grid: list[list] = np.full((self.grid_size, self.grid_size), '0', dtype='<U1')
+        self.grid: list[list] = np.full(
+            (self.grid_size, self.grid_size), '0', dtype='<U1')
 
         # Fill edges with 'W'
         self.grid[0, :] = 'W'
@@ -111,23 +124,35 @@ class Snake:
 
         self.last_action = action
 
-        if not (1 <= new_row < self.grid.shape[0] - 1 and 1 <= new_col < self.grid.shape[1] - 1):
+        if not (
+                1 <= new_row < self.grid.shape[0] -
+                1 and 1 <= new_col < self.grid.shape[1] -
+                1):
             self.died = True
             self.last_event = "hit_wall"
-            info = {"ate_green_apple": False, "ate_red_apple": False, "died": True}
+            info = {
+                "ate_green_apple": False,
+                "ate_red_apple": False,
+                "died": True}
             raise GameOver("Hit a wall.", info=info)
 
         elif coor in self.snake:
             self.died = True
             self.last_event = "hit_self"
-            info = {"ate_green_apple": False, "ate_red_apple": False, "died": True}
+            info = {
+                "ate_green_apple": False,
+                "ate_red_apple": False,
+                "died": True}
             raise GameOver("Hit itself.", info=info)
 
         elif coor == self.red_apple:
             if len(self.snake) <= 1:
                 self.died = True
                 self.last_event = "size_zero"
-                info = {"ate_green_apple": False, "ate_red_apple": True, "died": True}
+                info = {
+                    "ate_green_apple": False,
+                    "ate_red_apple": True,
+                    "died": True}
                 raise GameOver("Size went to 0.", info=info)
             self.snake.insert(0, coor)
             self.snake = self.snake[:-2]
@@ -135,7 +160,10 @@ class Snake:
             self.ate_red = True
             self.ate_apple = True
             self.last_event = "ate_red"
-            info = {"ate_green_apple": False, "ate_red_apple": True, "died": False}
+            info = {
+                "ate_green_apple": False,
+                "ate_red_apple": True,
+                "died": False}
             return info
         elif coor in self.green_apples:
             self.snake.insert(0, coor)
@@ -143,13 +171,19 @@ class Snake:
             self.green_apples.append(self._random_cell())
             self.ate_green = True
             self.last_event = "ate_green"
-            info = {"ate_green_apple": True, "ate_red_apple": False, "died": False}
+            info = {
+                "ate_green_apple": True,
+                "ate_red_apple": False,
+                "died": False}
             return info
         else:
             self.snake.insert(0, coor)
             self.snake.pop()
             self.last_event = "moved"
-            info = {"ate_green_apple": False, "ate_red_apple": False, "died": False}
+            info = {
+                "ate_green_apple": False,
+                "ate_red_apple": False,
+                "died": False}
             return info
 
     def print(self):
@@ -173,11 +207,12 @@ class Snake:
         print()
 
     def get_observation(self):
-        """Returns the visible state in the 4 directions from the snake's head, including snake and apples."""
+        """Returns the visible state in the 4 directions from the snake's head,
+        including snake and apples."""
         head_row, head_col = self.snake[0]
         vision = {"up": [], "down": [], "left": [], "right": []}
         # Up
-        for r in range(head_row-1, -1, -1):
+        for r in range(head_row - 1, -1, -1):
             cell = self.grid[r, head_col]
             pos = (r, head_col)
             if pos in self.snake:
@@ -190,7 +225,7 @@ class Snake:
             if self.grid[r, head_col] == "W":
                 break
         # Down
-        for r in range(head_row+1, self.grid.shape[0]):
+        for r in range(head_row + 1, self.grid.shape[0]):
             cell = self.grid[r, head_col]
             pos = (r, head_col)
             if pos in self.snake:
@@ -203,7 +238,7 @@ class Snake:
             if self.grid[r, head_col] == "W":
                 break
         # Left
-        for c in range(head_col-1, -1, -1):
+        for c in range(head_col - 1, -1, -1):
             cell = self.grid[head_row, c]
             pos = (head_row, c)
             if pos in self.snake:
@@ -216,7 +251,7 @@ class Snake:
             if self.grid[head_row, c] == "W":
                 break
         # Right
-        for c in range(head_col+1, self.grid.shape[1]):
+        for c in range(head_col + 1, self.grid.shape[1]):
             cell = self.grid[head_row, c]
             pos = (head_row, c)
             if pos in self.snake:
